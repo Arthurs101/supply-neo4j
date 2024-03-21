@@ -1,0 +1,11 @@
+{
+  "name": "api-express",
+  "version": "1.0.0",
+  "description": "Api for web app with nodejs express and neo4j",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "author": "",
+  "license": "ISC"
+}
