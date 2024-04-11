@@ -3,5 +3,5 @@ const { Router } = require("express")
 const router = Router();
 
 router.post('/login' , usersC.login);
-
+router.post('/signup', usersC.signup);
 module.exports = router;
