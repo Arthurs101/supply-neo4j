@@ -4,4 +4,5 @@ const router = Router();
 
 router.post('/login' , usersC.login);
 router.post('/signup', usersC.signup);
+router.put('/',usersC.updateUser);
 module.exports = router;

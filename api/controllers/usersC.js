@@ -32,4 +32,34 @@ const signup = (req, res) => {
         });
 };
 
-module.exports = {login,signup}
+const updateUser = (req, res) => {
+    const updateFields = req.body.update_fields;
+
+    let setClause = "";
+    const params = {};
+
+    // SET clause with parameters
+    Object.keys(updateFields).forEach((key, index) => {
+        setClause += `u.${key} = $${key}`;
+        params[key] = updateFields[key];
+
+        if (index < Object.keys(updateFields).length - 1) {
+            setClause += ", ";
+        }
+    });
+
+    session
+        .run(
+            `MATCH (u:USER {username: $username}) SET ${setClause} RETURN u`,
+            { username: req.body.username, ...params}
+        )
+        .then((response) => {
+            res.status(200).json(response.records);
+        })
+        .catch((error) => {
+            res.status(500).json(error);
+        });
+};
+
+
+module.exports = {login,signup,updateUser}
