@@ -3,6 +3,8 @@ var bodyParser = require('body-parser');
 
 var app = express()               
 const cors = require('cors');
+require('dotenv').config();
+
 var port = process.env.PORT || 8080  // establecemos nuestro puerto
 
 const DB = require('./databaseDriver');
@@ -14,8 +16,15 @@ app.use(cors({
     credentials: true // Allow cookies to be sent with the requests
   }));
   
+
+
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json())
+
+//impor the routes of the moduels
+const userR= require('./routes/userR');
+
+app.use('/user',userR);
 
 app.listen(port)
 console.log('API escuchando en el puerto ' + port)
