@@ -1,19 +1,24 @@
 const session = require('../databaseDriver')
-
+var parser = require('parse-neo4j');
 //perform a login , looking up for the username and password
 const login = async (req, res) => {
-    session
+    var match = session
         .run(
             "MATCH (u:USER {username: $username, password: $password}) RETURN u", 
             { username: req.body.username, password: req.body.password } 
         )
-        .then((response) => {
-            res.status(200).json(response.records);
-        })
         .catch((err) => res.status(500).json(err)); 
+    match
+        .then(parser.parse)
+        .then(parsed =>{
+            res.status(200).json(parsed[0]);
+        })
+        .catch(function(parseError) {
+            console.log(parseError);
+        });
 };
 const signup = (req, res) => {
-    session
+    response = session
         .run(
             "CREATE (u:USER:" + req.body.type + ":" + req.body.sex + " {name: $name, lastname: $lname, username: $username, password: $password, age: $age}) RETURN u",
             {
@@ -24,12 +29,17 @@ const signup = (req, res) => {
                 age: req.body.age
             }
         )
-        .then((response) => {
-            res.status(200).json(response.records);
-        })
         .catch((error) => {
             res.status(500).json(error);
         });
+
+    response.then(parser.parse)
+    .then(parsed =>{
+        res.status(200).json(parsed[0]);
+    })
+    .catch(function(parseError) {
+        console.log(parseError);
+    });
 };
 
 const updateUser = (req, res) => {
@@ -48,17 +58,23 @@ const updateUser = (req, res) => {
         }
     });
 
-    session
+    response = session
         .run(
             `MATCH (u:USER {username: $username}) SET ${setClause} RETURN u`,
             { username: req.body.username, ...params}
         )
-        .then((response) => {
-            res.status(200).json(response.records);
-        })
         .catch((error) => {
             res.status(500).json(error);
         });
+    
+    response.then(parser.parse)
+    .then(parsed =>{
+        res.status(200).json(parsed[0]);
+    })
+    .catch(function(parseError) {
+        console.log(parseError);
+    });
+    
 };
 
 
