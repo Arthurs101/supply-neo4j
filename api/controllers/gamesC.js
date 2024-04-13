@@ -14,14 +14,17 @@ const newGame = async (req, res) => {
             { titulo, publicacion, descripcion, portada, rating, precio, screenshots }
         );
 
+        console.log("Nuevo juego creado:", result.records[0].get('g'));
         res.status(200).json(result.records[0].get('g'));
     } catch (error) {
+        console.error("Error al agregar un nuevo juego:", error.message);
         res.status(500).json({ error: "Error al agregar un nuevo juego: " + error.message });
     }
 };
 
-//edit game
-const editGame = async (req, res) => {
+
+//edit game fields
+const editGamefields = async (req, res) => {
     try{
         const {gameId} = req.params;
         const { titulo, publicacion, descripcion, portada, rating, precio, screenshots } = req.body;
@@ -39,14 +42,43 @@ const editGame = async (req, res) => {
         SET ${Object.keys(updateFields).map(key => `g.${key} = $${key}`).join(', ')}
             RETURN g`;
 
-            //Ejecutar consulta
+            //Ejecutamos consulta
         const result = await session.run(query, {gameId, ...updateFields});
         res.status(200).json(result.records[0].get('g'));
     } catch (error) {
-        // Maneja cualquier error que ocurra durante el proceso
-        res.status(500).json({ error: "Error al editar el juego: " + error.message });
+        // si hay error
+        res.status(500).json({ error: "Error al editar campos del juego: " + error.message });
     }
 };
 
-module.exports = { newGame, editGame };
+//delete game fields
+const deleteGamefields = async (req, res) =>{
+    try{
+        const {gameId} = req.params;
+        const { fields } = req.body;
+
+        if (!fields || fields.length === 0){
+            return res.status(400).json({error: "Falta uno o más campos obligatorios."});
+        } // Construir la parte de la consulta Cypher para eliminar los campos especificados
+        const deleteClause = fields.map(field => `REMOVE g.${field}`).join(', ');
+
+        // Construir y ejecutar la consulta Cypher para actualizar el juego
+        const result = await session.run(
+            `MATCH (g:GAME) WHERE ID(g) = $gameId
+             ${deleteClause}
+             RETURN g`,
+            { gameId: parseInt(gameId) }
+        );
+
+        // Devolver el juego actualizado como respuesta
+        res.status(200).json(result.records[0].get('g'));
+    }
+    catch (error) {
+        // Manejar cualquier error que ocurra durante el proceso
+        res.status(500).json({ error: "Error al eliminar campos del juego: " + error.message });
+    }
+};
+
+
+module.exports = { newGame, editGamefields, deleteGamefields };
 
