@@ -1,3 +1,4 @@
+const { parse } = require('dotenv');
 const session = require('../databaseDriver')
 var parser = require('parse-neo4j');
 //perform a login , looking up for the username and password
@@ -10,15 +11,42 @@ const login = async (req, res) => {
         .catch((err) => res.status(500).json(err)); 
     match
         .then(parser.parse)
-        .then(parsed =>{
+        .then(async parsed =>{
             if (!parsed[0]){
                 res.status(404).json({error:"this user does not exist"});
             }else{
+                //get the labless of the usern
+                var labels = await session.run(
+                    "MATCH (n:USER{username:$username}) " +
+                    "WHERE size(labels(n)) > 2 " +
+                    "WITH n " +
+                    "UNWIND labels(n) AS lab " +
+                    "WITH lab " +
+                    "WHERE lab <> 'USER' " +
+                    "RETURN lab", {
+                        username: req.body.username
+                    }
+                    
+                )
+                parsed_labels = parser.parse(labels)
+                parsed[0]['type'] = parsed_labels[0]
+                parsed[0]['sex'] = parsed_labels[1]
+                if (parsed_labels[0] == 'ADMIN'){
+                    var stores = await session.run(
+                        "MATCH (n:USER{username:$username})-[:ADMINISTERS]->(s:TIENDA) return s",
+                        {
+                            username: req.body.username
+                        }
+                    )
+                    stores = parser.parse(stores)
+                    parsed[0]['storesAdmin'] = stores
+                }
                 res.status(200).json(parsed[0]);
             }
             
         })
         .catch(function(parseError) {
+            res.status(500).json(parseError)
             console.log(parseError);
         });
 };
@@ -86,9 +114,13 @@ const updateUser = (req, res) => {
 };
 
 const getUserOrders = (req,res) =>  {
+
     session.run(
-        "MATCH "
-    )
+        "MATCH (:USER{username: $UNAME})-[:MADE]->(o:ORDEN)-[h:HAS]->(g:GAME)  return o,h,g",
+        {UNAME: req.query.username})
+    .then(response => {
+
+    })
 }
 
 const makeOrder = async(req,res) =>{
@@ -154,12 +186,10 @@ const makeOrder = async(req,res) =>{
         res.status(500).json(error);
     })
     order.then(parser.parse).then((parsed) => {
-        console.log(parsed[0]['id']);
         // Proceed to create relationships between order node and games
         for (const game of games) {
             const gameID = game.gameID;
             const gameboughtAmount = game.boughtAmount;
-
             transaction.run(
                 "MATCH (o:ORDEN) WHERE ID(o) = $orderID " +
                 "MATCH (g:GAME) WHERE ID(g) = $gameID " +
