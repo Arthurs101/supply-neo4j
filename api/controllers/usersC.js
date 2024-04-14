@@ -120,6 +120,9 @@ const getOrders = (req,res) =>  {
         {UNAME: req.query.username})
     .then(response => {
         parsed = parser.parse(response);
+        if (parsed.length == 0) {
+            res.status(404).json({error:"user has no orders"})
+        }else{
         const groupedOrders = {};
         parsed.forEach(item => {
             const orderID = item.ORDER.id;
@@ -141,6 +144,7 @@ const getOrders = (req,res) =>  {
         const groupedOrdersArray = Object.values(groupedOrders);
 
         res.status(200).json(groupedOrdersArray);
+        }
     }).catch(error => {
         console.error(error);
         res.status(500).json(error);
