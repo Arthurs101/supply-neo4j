@@ -23,8 +23,10 @@ app.use(bodyParser.json())
 
 //impor the routes of the moduels
 const userR= require('./routes/userR');
-const gamesR= require('./routes/gamesR');
+const gameR= require('./routes/gamesR');
+
 app.use('/user',userR);
-app.use('/game',gamesR);
+app.use('/game',gameR);
+
 app.listen(port)
 console.log('API escuchando en el puerto ' + port)
