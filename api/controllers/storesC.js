@@ -1,9 +1,10 @@
+const { response } = require('express');
 const session = require('../databaseDriver')
 var parser = require('parse-neo4j');
 
 const newStore = (req,res) => {
     const {nombre,direccion,hasOnline} = req.body;
-    response = session
+    let response = session
         .run(
             "CREATE (u:TIENDA{nombre: $name, direccion: $address, tiendaOnline: $isOnline}) RETURN u",
             {
@@ -27,21 +28,22 @@ const newStore = (req,res) => {
 const addEmployee = (req, res) => {
     const username = req.query.username
     const store_id = req.query.storeID
-    response = session.run(
-        "MATCH (t:TIENDA) WHERE ID(t) = $storeID MATCH (u:ADMIN{username:$username} ) CREATE (u) -[r:ADMINISTERS]->(t)  return u,r,t",
+    console.log(store_id)
+    console.log(username)
+    result = session.run(
+        "MATCH (t:TIENDA) WHERE ID(t) = $store_id MATCH (u:ADMIN{username:$username}) CREATE p=(u)-[:ADMINISTERS]->(t)  return p",
         {
-            storeID : store_id,
+            store_id : Number(store_id),
             username: username
         }
-    ) .catch((error) => {
+    ) .then(result => {
+        console.log(result);
+        const parsed = parser.parse(result);
+        console.log(parsed);
+        res.status(200).json(parsed)})
+    .catch((error) => {
         res.status(500).json(error);
     });
-    response.then(parser.parse)
-    .then(parsed =>{
-        res.status(200).json(parsed);
-    })
-    .catch(function(parseError) {
-        console.log(parseError);
-    });
+    console.log(result)
 }
 module.exports =  {newStore,addEmployee}
