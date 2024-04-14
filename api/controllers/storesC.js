@@ -151,4 +151,5 @@ const deleteFromStock = async (req, res) => {
         res.status(500).json(error);
     }
 }
+
 module.exports =  {newStore,addEmployee,addToStock,getStock,deleteFromStock}
