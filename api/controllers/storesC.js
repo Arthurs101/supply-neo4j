@@ -26,24 +26,92 @@ const newStore = (req,res) => {
     });
 }
 const addEmployee = (req, res) => {
-    const username = req.query.username
-    const store_id = req.query.storeID
-    console.log(store_id)
-    console.log(username)
-    result = session.run(
-        "MATCH (t:TIENDA) WHERE ID(t) = $store_id MATCH (u:ADMIN{username:$username}) CREATE p=(u)-[:ADMINISTERS]->(t)  return p",
+    const username = req.query.username;
+    const store_id = req.query.storeID;
+   
+    session.run(
+        "MATCH (t:TIENDA) WHERE ID(t) = $store_id " +
+        "MATCH (u:ADMIN {username: $username}) " +
+        "OPTIONAL MATCH (u)-[r:ADMINISTERS]->(t) " +
+        "RETURN CASE WHEN r IS NULL THEN 'NOT_EXISTS' ELSE 'EXISTS' END AS relationStatus",
         {
-            store_id : Number(store_id),
+            store_id: Number(store_id),
             username: username
         }
-    ) .then(result => {
-        console.log(result);
-        const parsed = parser.parse(result);
-        console.log(parsed);
-        res.status(200).json(parsed)})
-    .catch((error) => {
+    ).then(result => {
+        const relationStatus = result.records[0].get("relationStatus");
+        if (relationStatus === 'EXISTS') {
+            res.status(409).json({ error: "Relation already exists" });
+        } else {
+            session.run(
+                "MATCH (t:TIENDA) WHERE ID(t) = $store_id " +
+                "MATCH (u:ADMIN{username:$username}) " +
+                "CREATE (u)-[:ADMINISTERS]->(t) RETURN 'SUCCESS' AS status",
+                {
+                    store_id: Number(store_id),
+                    username: username
+                }
+            ).then(() => {
+                res.status(200).json({ status: "SUCCESS", message: "Relation created successfully" });
+            }).catch((error) => {
+                res.status(500).json(error);
+            });
+        }
+    }).catch((error) => {
         res.status(500).json(error);
     });
-    console.log(result)
-}
-module.exports =  {newStore,addEmployee}
+};
+const addToStock = async (req, res) => {
+    const store_id = req.query.storeID;
+    const games = req.body;
+
+    try {
+        const results = [];
+        for (const game of games) {
+            const gameID = game.gameID;
+            const stockAmount = game.stock_amount;
+            const relationStatus = await session.run(
+                "MATCH (t:TIENDA) WHERE ID(t) = $store_id " +
+                "MATCH (g:GAME) WHERE ID(g) = $gameID " +
+                "OPTIONAL MATCH (t)-[r:SALES]->(g) " +
+                "RETURN CASE WHEN r IS NULL THEN 'NOT_EXISTS' ELSE 'EXISTS' END AS relationStatus",
+                {
+                    store_id: Number(store_id),
+                    gameID: Number(gameID)
+                }
+            ).then(result => result.records[0].get("relationStatus"));
+
+            if (relationStatus === 'EXISTS') {
+                results.push({ gameID: gameID, status: "Relation already exists" });
+            } else {
+                await session.run(
+                    "MATCH (t:TIENDA) WHERE ID(t) = $store_id " +
+                    "MATCH (g:GAME) WHERE ID(g) = $gameID " +
+                    "CREATE (t)-[:SALES { stock: $stockAmount }]->(g) RETURN 'SUCCESS' AS status",
+                    {
+                        store_id: Number(store_id),
+                        gameID: Number(gameID),
+                        stockAmount: Number(stockAmount)
+                    }
+                );
+                results.push({ gameID: gameID, status: "SUCCESS", message: "Relation created successfully" });
+            }
+        }
+        res.status(200).json(results);
+    } catch (error) {
+        res.status(500).json(error);
+    }
+};
+const getStock = async (req, res) => {
+    const store_id = req.query.storeID
+    console.log(store_id);
+    stock = await session.run(
+        "MATCH (t:TIENDA)-[s:SALES]->(g) WHERE ID(t)=$storeID return g as Game,s.stock as inStock",{
+            storeID:Number(store_id)
+        }).then(response =>{
+            parsed = parser.parse(response)
+            console.log(parsed)
+            res.status(200).json(parsed)
+        }).catch((error) => {res.status(500).json(error)})
+} 
+module.exports =  {newStore,addEmployee,addToStock,getStock}
