@@ -129,7 +129,7 @@ const deleteTag = async (req, res) => {
         console.error("Error al eliminar el tag:", error.message);
         res.status(500).json({ error: "Error al eliminar el tag: " + error.message });
     }
-}
+};
 
 //GET TAGS
 const getTags = async (req, res) => {
