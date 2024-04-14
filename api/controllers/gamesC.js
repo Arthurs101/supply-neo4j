@@ -80,7 +80,6 @@ const deleteGamefields = async (req, res) =>{
         } // Construir la parte de la consulta Cypher para eliminar los campos especificados
         const deleteClause = `REMOVE ${fields.map(field => `g.${field}`).join(', ')}`;
 
-
         // Construir y ejecutar la consulta Cypher para actualizar el juego
         const result = await session.run(
             `MATCH (g:GAME) WHERE ID(g) = $gameId
@@ -99,5 +98,26 @@ const deleteGamefields = async (req, res) =>{
 };
 
 
-module.exports = { newGame, editGamefields, deleteGamefields };
+const deleteGame = async(req, res) => {
+    try {
+        const { gameId} = req.params;
+
+        if(!gameId){
+            return res.status(400).json({error: "Falta el ID del juego."});
+        }
+
+        const result = await session.run(
+            "MATCH (g:GAME) WHERE ID(g) = $gameId DELETE g",
+            {gameId: parseInt(gameId)}
+        );
+
+        res.status(200).json({msg: "Juego eliminado con éxito."});
+
+     } catch(error){
+        res.status(500).json({error: "Error al eliminar el juego: " + error.message});
+     }
+};
+
+
+module.exports = { newGame, editGamefields, deleteGamefields, deleteGame };
 
