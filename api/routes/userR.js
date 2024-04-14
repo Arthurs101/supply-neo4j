@@ -6,4 +6,5 @@ router.post('/login' , usersC.login);
 router.post('/signup', usersC.signup);
 router.put('/',usersC.updateUser);
 router.post('/order',usersC.makeOrder);
+router.get('/order',usersC.getOrders);
 module.exports = router;

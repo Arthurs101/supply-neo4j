@@ -113,14 +113,38 @@ const updateUser = (req, res) => {
     
 };
 
-const getUserOrders = (req,res) =>  {
+const getOrders = (req,res) =>  {
 
     session.run(
-        "MATCH (:USER{username: $UNAME})-[:MADE]->(o:ORDEN)-[h:HAS]->(g:GAME)  return o,h,g",
+        "MATCH (:USER{username: $UNAME})-[:MADE]->(o:ORDEN)-[h:HAS]->(g:GAME)  return o as ORDER,h.amount as BOUGHT,g as GAME",
         {UNAME: req.query.username})
     .then(response => {
+        parsed = parser.parse(response);
+        const groupedOrders = {};const groupedOrders = {};
+        parsed.forEach(item => {
+            const orderID = item.ORDER.id;
+            if (!groupedOrders[orderID]) {
+                // Initialize order details
+                groupedOrders[orderID] = {
+                    details: item.ORDER,
+                    items: [],
+                    total: 0
+                };
+            }
+            // Add game to the items array
+            groupedOrders[orderID].items.push(item.GAME);
+            // Calculate and update total
+            groupedOrders[orderID].total += (item.BOUGHT * item.GAME.precio);
+        });
 
-    })
+        // Convert groupedOrders object to array
+        const groupedOrdersArray = Object.values(groupedOrders);
+
+        res.status(200).json(groupedOrdersArray);
+    }).catch(error => {
+        console.error(error);
+        res.status(500).json(error);
+    });
 }
 
 const makeOrder = async(req,res) =>{
@@ -216,4 +240,4 @@ const makeOrder = async(req,res) =>{
 
 }
 
-module.exports = {login,signup,updateUser,makeOrder}
+module.exports = {login,signup,updateUser,makeOrder,getOrders}
