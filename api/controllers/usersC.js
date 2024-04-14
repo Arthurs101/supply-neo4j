@@ -11,7 +11,12 @@ const login = async (req, res) => {
     match
         .then(parser.parse)
         .then(parsed =>{
-            res.status(200).json(parsed[0]);
+            if (!parsed[0]){
+                res.status(404).json({error:"this user does not exist"});
+            }else{
+                res.status(200).json(parsed[0]);
+            }
+            
         })
         .catch(function(parseError) {
             console.log(parseError);
@@ -69,10 +74,13 @@ const updateUser = (req, res) => {
     
     response.then(parser.parse)
     .then(parsed =>{
-        res.status(200).json(parsed[0]);
+        if(!parsed[0]){
+            res.status(404).json(parsed[0]);
+        }
+        res.status(404).json({error:"this user does not exist"});
     })
     .catch(function(parseError) {
-        console.log(parseError);
+        res.status(500).json(parseError)
     });
     
 };

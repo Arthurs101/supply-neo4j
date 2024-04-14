@@ -4,4 +4,7 @@ const router = Router();
 
 router.post('/new',storesC.newStore)
 router.post('/employ',storesC.addEmployee)
+router.get('/inventory',storesC.getStock)
+router.post('/inventory',storesC.addToStock)
+router.delete('/inventory',storesC.deleteFromStock)
 module.exports = router
