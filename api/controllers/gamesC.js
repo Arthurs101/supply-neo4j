@@ -117,6 +117,33 @@ const deleteGamefields = async (req, res) =>{
     }
 };
 
+const deleteGame = async (req, res) => {
+    try {
+        const { gameId } = req.params;
 
-module.exports = { newGame, editGamefields, deleteGamefields };
+        if (!gameId) {
+            return res.status(400).json({ error: "Falta el ID del juego." });
+        }
+
+        const result = await session.run(
+            "MATCH (g:GAME) WHERE ID(g) = $gameId DELETE g",
+            { gameId: parseInt(gameId) }
+        );
+
+        if (result.summary.counters._stats.nodesDeleted === 0) {
+            return res.status(404).json({ error: "No se encontró el juego para eliminar." });
+        }
+
+        console.log("Juego eliminado con éxito.");
+        res.status(200).json({ msg: "Juego eliminado con éxito." });
+
+    } catch (error) {
+        console.error("Error al eliminar el juego:", error.message);
+        res.status(500).json({ error: "Error al eliminar el juego: " + error.message });
+    }
+};
+
+
+
+module.exports = { newGame, editGamefields, deleteGamefields, deleteGame };
 
