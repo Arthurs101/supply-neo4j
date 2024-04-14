@@ -66,13 +66,13 @@ const editPlatformfields = async (req, res) => {
 const deletePlatformfields = async (req, res) => {
     try{
         const { platformId } = req.params;
-        const {fields } = req.params;
+        const {fields } = req.body;
 
-        if (!fields) {
+        if (!fields || fields.length === 0) {
             return res.status(400).json({ error: "Falta uno o más campos obligatorios." });
         }
 
-        const deleteClause = `REMOVE ${fields.split(',').map(field => `p.${field}`).join(', ')}`;
+        const deleteClause = `REMOVE ${fields.map(field => `p.${field}`).join(', ')}`;
 
         const result = await session.run(
             `MATCH (p:PLATFORM) WHERE ID(p) = $platformId
@@ -98,7 +98,7 @@ const deletePlatformfields = async (req, res) => {
 
 //delete a platform from database
 const deletePlatform = async (req, res) => {
-    try{
+    try {
         const { platformId } = req.params;
 
         const result = await session.run(
@@ -107,19 +107,20 @@ const deletePlatform = async (req, res) => {
             { platformId: parseInt(platformId) }
         );
 
-        if(result.records.length === 0){
+        // Verificar si se eliminó correctamente al menos un nodo
+        if (result.summary.counters.nodesDeleted === 0) {
             console.error("No se encontró la plataforma para eliminar.");
             return res.status(404).json({ error: "No se encontró la plataforma para eliminar." });
         }
 
-        console.log("Plataforma eliminada con exito.");
-        res.status(200).json({ message: "Plataforma eliminada con exito." });
-    }
-    catch (error) {
+        console.log("Plataforma eliminada con éxito.");
+        res.status(200).json({ message: "Plataforma eliminada con éxito." });
+    } catch (error) {
         console.error("Error al eliminar la plataforma:", error.message);
         res.status(500).json({ error: "Error al eliminar la plataforma: " + error.message });
     }
 };
+
 
 //get platforms
 const getPlatforms = async (req, res) => {
