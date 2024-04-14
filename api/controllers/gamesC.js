@@ -14,20 +14,16 @@ const newGame = async (req, res) => {
             { titulo, publicacion, descripcion, portada, rating, precio, screenshots }
         );
 
-        
-        result.then(parser.parse)
-        .then(parsed =>{
-            console.log("Nuevo juego creado:", result.records[0].get('g'));
-            res.status(200).json(parsed[0]);
-        })
-        .catch(function(parseError) {
-            console.log(parseError);
-        });
+        const parsedResult = parser.parse(result);
+        console.log("Nuevo juego creado:", parsedResult[0]);
+        res.status(200).json(parsedResult[0]);
+
     } catch (error) {
         console.error("Error al agregar un nuevo juego:", error.message);
         res.status(500).json({ error: "Error al agregar un nuevo juego: " + error.message });
     }
 };
+
 
 
 //edit game fields
@@ -67,20 +63,17 @@ const editGamefields = async (req, res) => {
         }
 
         // Se editaron los campos correctamente
-        result.then(parser.parse)
-        .then(parsed =>{
-            console.log("Campos del juego editados con éxito:",parsed[0]);
-            res.status(200).json(parsed[0]);
-        })
-        .catch(function(parseError) {
-            console.log(parseError);
-        });
+        const parsedResult = parser.parse(result);
+        console.log("Campos del juego editados con éxito:", parsedResult[0]);
+        res.status(200).json(parsedResult[0]);
+
     } catch (error) {
         // Si hay un error
         console.error("Error al editar campos del juego:", error.message);
         res.status(500).json({ error: "Error al editar campos del juego: " + error.message });
     }
 };
+
 
 //delete game fields
 const deleteGamefields = async (req, res) =>{
@@ -89,10 +82,12 @@ const deleteGamefields = async (req, res) =>{
         const { fields } = req.body;
 
         if (!fields || fields.length === 0){
+            console.error("No se proporcionaron campos para eliminar.");
             return res.status(400).json({error: "Falta uno o más campos obligatorios."});
-        } // Construir la parte de la consulta Cypher para eliminar los campos especificados
+        } 
+        
+        // Construir la parte de la consulta Cypher para eliminar los campos especificados
         const deleteClause = `REMOVE ${fields.map(field => `g.${field}`).join(', ')}`;
-
 
         // Construir y ejecutar la consulta Cypher para actualizar el juego
         const result = await session.run(
@@ -101,14 +96,16 @@ const deleteGamefields = async (req, res) =>{
              RETURN g`,
             { gameId: parseInt(gameId) }
         );
-        result.then(parser.parse)
-        .then(parsed =>{
-            console.log("Campos del juego eliminados con éxito:", parsed[0]);
-            res.status(200).json(parsed[0]);
-        })
-        .catch(function(parseError) {
-            console.log(parseError);
-        });
+        
+        // Verificar si se encontró un juego para eliminar
+        if (result.records.length === 0) {
+            return res.status(404).json({ error: "No se encontró el juego para eliminar." });
+        }
+
+        // Extraer los datos del resultado
+        const parsedResult = parser.parse(result);
+        console.log("Campos del juego eliminados con éxito:", parsedResult);
+        res.status(200).json(parsedResult);
     
     }
     catch (error) {
@@ -134,8 +131,11 @@ const deleteGame = async (req, res) => {
             return res.status(404).json({ error: "No se encontró el juego para eliminar." });
         }
 
-        console.log("Juego eliminado con éxito.");
-        res.status(200).json({ msg: "Juego eliminado con éxito." });
+        // Modifica el JSON de respuesta para incluir el mensaje
+        const parsedResult = parser.parse(result);
+        const response = { message: "Juego eliminado correctamente status 200", data: parsedResult };
+        console.log("Juego eliminado con éxito:", response);
+        res.status(200).json(response);
 
     } catch (error) {
         console.error("Error al eliminar el juego:", error.message);
@@ -143,7 +143,20 @@ const deleteGame = async (req, res) => {
     }
 };
 
+//Get Games
+const getGames = async (req, res) => {
+    try {
+        const result = await session.run(
+            "MATCH (g:GAME) RETURN g"
+        );
 
+        const parsedResult = parser.parse(result);
+        console.log("Juegos encontrados:", parsedResult);
+        res.status(200).json(parsedResult);
 
-module.exports = { newGame, editGamefields, deleteGamefields, deleteGame };
-
+    } catch (error) {
+        console.error("Error al obtener los juegos:", error.message);
+        res.status(500).json({ error: "Error al obtener los juegos: " + error.message });
+    }
+};
+module.exports = { newGame, editGamefields, deleteGamefields, deleteGame, getGames };
