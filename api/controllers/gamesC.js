@@ -1,5 +1,5 @@
 const session = require('../databaseDriver');
-
+var parser = require('parse-neo4j');
 //add a new game to the database
 const newGame = async (req, res) => {
     try {
@@ -14,8 +14,15 @@ const newGame = async (req, res) => {
             { titulo, publicacion, descripcion, portada, rating, precio, screenshots }
         );
 
-        console.log("Nuevo juego creado:", result.records[0].get('g'));
-        res.status(200).json(result.records[0].get('g'));
+        
+        result.then(parser.parse)
+        .then(parsed =>{
+            console.log("Nuevo juego creado:", result.records[0].get('g'));
+            res.status(200).json(parsed[0]);
+        })
+        .catch(function(parseError) {
+            console.log(parseError);
+        });
     } catch (error) {
         console.error("Error al agregar un nuevo juego:", error.message);
         res.status(500).json({ error: "Error al agregar un nuevo juego: " + error.message });
@@ -60,8 +67,14 @@ const editGamefields = async (req, res) => {
         }
 
         // Se editaron los campos correctamente
-        console.log("Campos del juego editados con éxito:", result.records[0].get('g').properties);
-        res.status(200).json(result.records[0].get('g').properties);
+        result.then(parser.parse)
+        .then(parsed =>{
+            console.log("Campos del juego editados con éxito:",parsed[0]);
+            res.status(200).json(parsed[0]);
+        })
+        .catch(function(parseError) {
+            console.log(parseError);
+        });
     } catch (error) {
         // Si hay un error
         console.error("Error al editar campos del juego:", error.message);
@@ -88,9 +101,15 @@ const deleteGamefields = async (req, res) =>{
              RETURN g`,
             { gameId: parseInt(gameId) }
         );
-
-        // Devolver el juego actualizado como respuesta
-        res.status(200).json(result.records[0].get('g'));
+        result.then(parser.parse)
+        .then(parsed =>{
+            console.log("Campos del juego eliminados con éxito:", parsed[0]);
+            res.status(200).json(parsed[0]);
+        })
+        .catch(function(parseError) {
+            console.log(parseError);
+        });
+    
     }
     catch (error) {
         // Manejar cualquier error que ocurra durante el proceso
