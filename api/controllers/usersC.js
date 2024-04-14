@@ -120,7 +120,7 @@ const getOrders = (req,res) =>  {
         {UNAME: req.query.username})
     .then(response => {
         parsed = parser.parse(response);
-        const groupedOrders = {};const groupedOrders = {};
+        const groupedOrders = {};
         parsed.forEach(item => {
             const orderID = item.ORDER.id;
             if (!groupedOrders[orderID]) {
