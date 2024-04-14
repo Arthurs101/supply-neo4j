@@ -25,9 +25,11 @@ app.use(bodyParser.json())
 const userR= require('./routes/userR');
 const gameR= require('./routes/gamesR');
 const storesR= require('./routes/storesR');
+const tagsR= require('./routes/tagsR');
 app.use('/user',userR);
 app.use('/game',gameR);
-app.use('/store',storesR)
+app.use('/store',storesR);
+app.use('/tag',tagsR)
 
 app.listen(port)
 console.log('API escuchando en el puerto ' + port)
