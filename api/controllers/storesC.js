@@ -114,4 +114,41 @@ const getStock = async (req, res) => {
             res.status(200).json(parsed)
         }).catch((error) => {res.status(500).json(error)})
 } 
-module.exports =  {newStore,addEmployee,addToStock,getStock}
+const deleteFromStock = async (req, res) => {
+    const store_id = req.query.storeID;
+    const games = req.body;
+
+    try {
+        const results = [];
+        for (const game of games) {
+            const gameID = game.gameID;
+            const relationStatus = await session.run(
+                "MATCH (t:TIENDA) WHERE ID(t) = $store_id " +
+                "MATCH (g:GAME) WHERE ID(g) = $gameID " +
+                "OPTIONAL MATCH (t)-[r:SALES]->(g) " +
+                "RETURN CASE WHEN r IS NULL THEN 'NOT_EXISTS' ELSE 'EXISTS' END AS relationStatus",
+                {
+                    store_id: Number(store_id),
+                    gameID: Number(gameID)
+                }
+            ).then(result => result.records[0].get("relationStatus"));
+            if (relationStatus === 'EXISTS') {
+                await session.run(
+                "MATCH (t:TIENDA) WHERE ID(t) = $store_id " +
+                "MATCH (g:GAME) WHERE ID(g) = $gameID " +
+                "MATCH (t)-[r:SALES]->(g) DELETE r",
+                {
+                    store_id: Number(store_id),
+                    gameID: Number(gameID)
+                })
+                results.push({ gameID: gameID, status: "SUCCESS", message: "Relation deleted successfully" });
+            } else {
+                results.push({ gameID: gameID, status: "WARNING", message: "Relation never existed" });
+            }
+        }
+        res.status(200).json(results);
+    }catch (error) {
+        res.status(500).json(error);
+    }
+}
+module.exports =  {newStore,addEmployee,addToStock,getStock,deleteFromStock}
