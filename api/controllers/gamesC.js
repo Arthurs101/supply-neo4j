@@ -25,8 +25,8 @@ const newGame = async (req, res) => {
 
 //edit game fields
 const editGamefields = async (req, res) => {
-    try{
-        const {gameId} = req.params;
+    try {
+        const { gameId } = req.params;
         const { titulo, publicacion, descripcion, portada, rating, precio, screenshots } = req.body;
 
         let updateFields = {};
@@ -38,15 +38,33 @@ const editGamefields = async (req, res) => {
         if (precio) updateFields.precio = precio;
         if (screenshots) updateFields.screenshots = screenshots;
 
-        const query = `MATCH (g:GAME) WHERE ID(g) = $gameId
-        SET ${Object.keys(updateFields).map(key => `g.${key} = $${key}`).join(', ')}
-            RETURN g`;
+        // Verificar si no se proporciona ningún campo para editar
+        if (Object.keys(updateFields).length === 0) {
+            console.error("No se proporcionaron campos para editar.");
+            return res.status(400).json({ error: "No se proporcionaron campos para editar." });
+        }
 
-            //Ejecutamos consulta
-        const result = await session.run(query, {gameId, ...updateFields});
-        res.status(200).json(result.records[0].get('g'));
+        const query = `
+            MATCH (g:GAME) WHERE ID(g) = $gameId
+            SET ${Object.keys(updateFields).map(key => `g.${key} = $${key}`).join(', ')}
+            RETURN g
+        `;
+
+        // Ejecutar consulta
+        const result = await session.run(query, { gameId: parseInt(gameId), ...updateFields });
+
+        // Verificar si se editó correctamente algún campo
+        if (result.records.length === 0) {
+            console.error("No se encontró el juego para editar.");
+            return res.status(404).json({ error: "No se encontró el juego para editar." });
+        }
+
+        // Se editaron los campos correctamente
+        console.log("Campos del juego editados con éxito:", result.records[0].get('g').properties);
+        res.status(200).json(result.records[0].get('g').properties);
     } catch (error) {
-        // si hay error
+        // Si hay un error
+        console.error("Error al editar campos del juego:", error.message);
         res.status(500).json({ error: "Error al editar campos del juego: " + error.message });
     }
 };
@@ -60,7 +78,8 @@ const deleteGamefields = async (req, res) =>{
         if (!fields || fields.length === 0){
             return res.status(400).json({error: "Falta uno o más campos obligatorios."});
         } // Construir la parte de la consulta Cypher para eliminar los campos especificados
-        const deleteClause = fields.map(field => `REMOVE g.${field}`).join(', ');
+        const deleteClause = `REMOVE ${fields.map(field => `g.${field}`).join(', ')}`;
+
 
         // Construir y ejecutar la consulta Cypher para actualizar el juego
         const result = await session.run(
