@@ -170,6 +170,90 @@ const getGames = async (req, res) => {
         res.status(500).json({ error: "Error al obtener los juegos: " + error.message });
     }
 };
+//Get the stores where the game can be bought
+const getGamseStores = async(req,res) => {
+    const { gameId } = req.params;
+    try {
+        // Obtener los parámetros de paginación del query string
+        const page = parseInt(req.query.page) || 1; // inicio página 1 
+        const pageSize = parseInt(req.query.pageSize) || 20; // página inicial con 20 juegos
 
+        // Calcular el índice de inicio y fin para la paginación
+        const skip = (page - 1) * pageSize;
+        const limit = pageSize;
 
-module.exports = { newGame, editGamefields, deleteGamefields, deleteGame, getGames };
+        // Consulta Cypher para obtener los juegos de la página actual
+        const result = await session.run(
+            "MATCH (s:TIENDA)-[:SALES]->(g:GAME) WHERE ID(g) = $gameId RETURN s SKIP toInteger($skip) LIMIT toInteger($limit)",
+            { gameId: parseInt(gameId) ,skip, limit }
+        );
+
+        // Parsear y devolver los resultados
+        const parsedResult = parser.parse(result);
+        console.log("Juegos encontrados en la página", page + ":", parsedResult);
+        res.status(200).json(parsedResult);
+
+    } catch (error) {
+        console.error("Error al obtener los juegos:", error.message);
+        res.status(500).json({ error: "Error al obtener los juegos: " + error.message });
+    }
+};
+
+//Get the stores where the game can be bought
+const getGamseSuppliers = async(req,res) => {
+    const { gameId } = req.params;
+    try {
+        // Obtener los parámetros de paginación del query string
+        const page = parseInt(req.query.page) || 1; // inicio página 1 
+        const pageSize = parseInt(req.query.pageSize) || 20; // página inicial con 20 juegos
+
+        // Calcular el índice de inicio y fin para la paginación
+        const skip = (page - 1) * pageSize;
+        const limit = pageSize;
+
+        // Consulta Cypher para obtener los juegos de la página actual
+        const result = await session.run(
+            "MATCH (s:SUPPLIER)-[:SUPPLIES]->(g:GAME) WHERE ID(g) = $gameId RETURN s SKIP toInteger($skip) LIMIT toInteger($limit)",
+            { gameId: parseInt(gameId) ,skip, limit }
+        );
+
+        // Parsear y devolver los resultados
+        const parsedResult = parser.parse(result);
+        console.log("Juegos encontrados en la página", page + ":", parsedResult);
+        res.status(200).json(parsedResult);
+
+    } catch (error) {
+        console.error("Error al obtener los juegos:", error.message);
+        res.status(500).json({ error: "Error al obtener los juegos: " + error.message });
+    }
+};
+
+const getGameSearch = async (req, res) => {
+    const { gameName } = req.params;
+    try {
+        // Obtener los parámetros de paginación del query string
+        const page = parseInt(req.query.page) || 1; // inicio página 1 
+        const pageSize = parseInt(req.query.pageSize) || 20; // página inicial con 20 juegos
+
+        // Calcular el índice de inicio y fin para la paginación
+        const skip = (page - 1) * pageSize;
+        const limit = pageSize;
+
+        // Consulta Cypher para obtener los juegos de la página actual
+        const result = await session.run(
+            "MATCH (g:GAME) WHERE g.titulo =~ $gameName RETURN g SKIP toInteger($skip) LIMIT toInteger($limit)",
+            { gameName:`(?i).*${gameName}.*` ,skip, limit }
+        );
+
+        // Parsear y devolver los resultados
+        const parsedResult = parser.parse(result);
+        console.log("Juegos encontrados en la página", page + ":", parsedResult);
+        res.status(200).json(parsedResult);
+
+    } catch (error) {
+        console.error("Error al obtener los juegos:", error.message);
+        res.status(500).json({ error: "Error al obtener los juegos: " + error.message });
+    }
+}
+
+module.exports = { newGame, editGamefields, deleteGamefields, deleteGame, getGames , getGamseStores , getGamseSuppliers , getGameSearch};

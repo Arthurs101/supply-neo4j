@@ -38,8 +38,16 @@ const login = async (req, res) => {
                             username: req.body.username
                         }
                     )
+                    var suppliers = await session.run(
+                        "MATCH (n:USER{username:$username})-[:ADMINISTERS]->(s:SUPPLIER) return s",
+                        {
+                            username: req.body.username
+                        }
+                    )
                     stores = parser.parse(stores)
+                    suppliers = parser.parse(suppliers)
                     parsed[0]['storesAdmin'] = stores
+                    parsed[0]['suppliersAdmin'] = suppliers
                 }
                 res.status(200).json(parsed[0]);
             }

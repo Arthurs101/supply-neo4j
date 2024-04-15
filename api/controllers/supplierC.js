@@ -219,4 +219,33 @@ const deleteFromStock = async (req, res) => {
     }
 }
 
-module.exports =  {newSupplier,addEmployee,addToStock,getStock,deleteFromStock,updateStock,getSuppliers}
+const getSupplierSearch = async (req, res) => {
+    try {
+        const {supplierName} = req.params
+        console.log('(?i)'+String(supplierName)+'*')
+        console.log(supplierName)
+        // Obtener los parámetros de paginación del query string
+        const page = parseInt(req.query.page) || 1; // inicio página 1 
+        const pageSize = parseInt(req.query.pageSize) || 20; // página inicial con 20 juegos
+
+        // Calcular el índice de inicio y fin para la paginación
+        const skip = (page - 1) * pageSize;
+        const limit = pageSize;
+
+        // Consulta Cypher para obtener los juegos de la página actual
+        const result = await session.run(
+            "MATCH (g:SUPPLIER) WHERE g.nombre =~ $supplierName RETURN g SKIP toInteger($skip) LIMIT toInteger($limit)",
+            { supplierName:`(?i).*${supplierName}.*` ,skip, limit }
+        );
+
+        // Parsear y devolver los resultados
+        const parsedResult = parser.parse(result);
+        res.status(200).json(parsedResult);
+
+    } catch (error) {
+        res.status(500).json({ error: "Error al obtener los suppliers: " + error.message });
+    }
+}
+
+
+module.exports =  {newSupplier,addEmployee,addToStock,getStock,deleteFromStock,updateStock,getSuppliers,getSupplierSearch}
