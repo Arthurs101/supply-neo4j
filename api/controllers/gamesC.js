@@ -241,8 +241,8 @@ const getGameSearch = async (req, res) => {
 
         // Consulta Cypher para obtener los juegos de la página actual
         const result = await session.run(
-            "MATCH (g:GAME) WHERE g.titulo CONTAINS $gameName RETURN g SKIP toInteger($skip) LIMIT toInteger($limit)",
-            { gameName ,skip, limit }
+            "MATCH (g:GAME) WHERE g.titulo =~ $gameName RETURN g SKIP toInteger($skip) LIMIT toInteger($limit)",
+            { gameName:`(?i).*${gameName}.*` ,skip, limit }
         );
 
         // Parsear y devolver los resultados

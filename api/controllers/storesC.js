@@ -217,4 +217,33 @@ const askSuministers = async(req, res) => {
     }
 }
 
-module.exports =  {newStore,addEmployee,addToStock,getStock,deleteFromStock,getStores}
+const getStoreSearch = async (req, res) => {
+    try {
+        const {storeName} = req.params
+        console.log('(?i)'+String(storeName)+'*')
+        console.log(storeName)
+        // Obtener los parámetros de paginación del query string
+        const page = parseInt(req.query.page) || 1; // inicio página 1 
+        const pageSize = parseInt(req.query.pageSize) || 20; // página inicial con 20 juegos
+
+        // Calcular el índice de inicio y fin para la paginación
+        const skip = (page - 1) * pageSize;
+        const limit = pageSize;
+
+        // Consulta Cypher para obtener los juegos de la página actual
+        const result = await session.run(
+            "MATCH (g:TIENDA) WHERE g.nombre =~ $storeName RETURN g SKIP toInteger($skip) LIMIT toInteger($limit)",
+            { storeName:`(?i).*${storeName}.*` ,skip, limit }
+        );
+
+        // Parsear y devolver los resultados
+        const parsedResult = parser.parse(result);
+        res.status(200).json(parsedResult);
+
+    } catch (error) {
+        console.error("Error al obtener los juegos:", error.message);
+        res.status(500).json({ error: "Error al obtener los juegos: " + error.message });
+    }
+}
+
+module.exports =  {newStore,addEmployee,addToStock,getStock,deleteFromStock,getStores,getStoreSearch}
