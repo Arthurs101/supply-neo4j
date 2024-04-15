@@ -171,5 +171,140 @@ const getGames = async (req, res) => {
     }
 };
 
+//get game by id
+const getGameById = async (req, res) => {
+    try {
+        const { gameId } = req.params;
 
-module.exports = { newGame, editGamefields, deleteGamefields, deleteGame, getGames };
+        if (!gameId) {
+            return res.status(400).json({ error: "Falta el ID del juego." });
+        }
+
+        const result = await session.run(
+            "MATCH (g:GAME) WHERE ID(g) = $gameId RETURN g",
+            { gameId: parseInt(gameId) }
+        );
+
+        // Parsear y enviar el resultado al cliente
+        const parsedResult = parser.parse(result);
+        res.status(200).json(parsedResult);
+
+    } catch (error) {
+        console.error("Error al obtener el juego por ID:", error.message);
+        res.status(500).json({ error: "Error al obtener el juego por ID: " + error.message });
+    }
+};
+
+
+//Add a genre to a game
+const addGenreToGame = async (req, res) => {
+    try {
+        const { gameId, genreId } = req.body;
+
+        // Verificar si se proporcionan tanto el ID del juego como el ID del género
+        if (!gameId || !genreId) {
+            return res.status(400).json({ error: "Falta el ID del juego o del género." });
+        }
+
+        // Verificar si el juego y el género existen en la base de datos
+        const gameExistsResult = await session.run(
+            "MATCH (g:GAME) WHERE ID(g) = $gameId RETURN g",
+            { gameId: parseInt(gameId) }
+        );
+        const genreExistsResult = await session.run(
+            "MATCH (g:GENRE) WHERE ID(g) = $genreId RETURN g",
+            { genreId: parseInt(genreId) }
+        );
+
+        if (gameExistsResult.records.length === 0) {
+            return res.status(404).json({ error: "El juego no existe." });
+        }
+
+        if (genreExistsResult.records.length === 0) {
+            return res.status(404).json({ error: "El género no existe." });
+        }
+
+        // Crear la relación entre el juego y el género
+        const result = await session.run(
+            "MATCH (g:GAME), (genre:GENRE) WHERE ID(g) = $gameId AND ID(genre) = $genreId " +
+            "MERGE (g)-[:CATEGORIZED_AS]->(genre) RETURN g, genre",
+            { gameId: parseInt(gameId), genreId: parseInt(genreId) }
+        );
+
+        // Parsear y devolver el resultado
+        const parsedResult = parser.parse(result);
+        res.status(200).json(parsedResult);
+    } catch (error) {
+        console.error("Error al agregar el género al juego:", error.message);
+        res.status(500).json({ error: "Error al agregar el género al juego: " + error.message });
+    }
+};
+
+
+
+//delete relationship beetwen game and genre
+const removeGenreFromGame = async (req, res) => {
+    try {
+        const { gameId, genreId } = req.body;
+
+        // Verificar si se proporcionan tanto el ID del juego como el ID del género
+        if (!gameId || !genreId) {
+            return res.status(400).json({ error: "Falta el ID del juego o del género." });
+        }
+
+        // Verificar si la relación entre el juego y el género existe
+        const relationExistsResult = await session.run(
+            "MATCH (g:GAME)-[rel:CATEGORIZED_AS]->(genre:GENRE) WHERE ID(g) = $gameId AND ID(genre) = $genreId RETURN rel",
+            { gameId: parseInt(gameId), genreId: parseInt(genreId) }
+        );
+
+        if (relationExistsResult.records.length === 0) {
+            return res.status(404).json({ error: "La relación entre el juego y el género no existe." });
+        }
+
+        // Eliminar la relación entre el juego y el género
+        await session.run(
+            "MATCH (g:GAME)-[rel:CATEGORIZED_AS]->(genre:GENRE) WHERE ID(g) = $gameId AND ID(genre) = $genreId DELETE rel",
+            { gameId: parseInt(gameId), genreId: parseInt(genreId) }
+        );
+
+        res.status(200).json({ message: "Relación entre el juego y el género eliminada correctamente." });
+    } catch (error) {
+        console.error("Error al eliminar la relación entre el juego y el género:", error.message);
+        res.status(500).json({ error: "Error al eliminar la relación entre el juego y el género: " + error.message });
+    }
+};
+
+//get relationship between game and genre
+const getGenresOfGame = async (req, res) => {
+    try {
+        const { gameId } = req.params;
+
+        // Verificar si se proporciona el ID del juego
+        if (!gameId) {
+            return res.status(400).json({ error: "Falta el ID del juego." });
+        }
+
+        // Consultar los géneros asociados al juego
+        const result = await session.run(
+            "MATCH (g:GAME)-[:CATEGORIZED_AS]->(genre:GENRE) WHERE ID(g) = $gameId RETURN genre",
+            { gameId: parseInt(gameId) }
+        );
+
+        // Verificar si se encontraron géneros asociados al juego
+        if (result.records.length === 0) {
+            return res.status(404).json({ error: "No se encontraron géneros asociados al juego." });
+        }
+
+        // Parsear y devolver los géneros asociados al juego
+        const parsedResult = parser.parse(result);
+        res.status(200).json(parsedResult);
+    } catch (error) {
+        console.error("Error al obtener los géneros asociados al juego:", error.message);
+        res.status(500).json({ error: "Error al obtener los géneros asociados al juego: " + error.message });
+    }
+};
+
+
+
+module.exports = { newGame, editGamefields, deleteGamefields, deleteGame, getGames, addGenreToGame, removeGenreFromGame, getGenresOfGame, getGameById};
