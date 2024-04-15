@@ -114,10 +114,15 @@ const updateUser = (req, res) => {
 };
 
 const getOrders = (req,res) =>  {
+    const page = parseInt(req.query.page) || 1; // inicio página 1 
+    const pageSize = parseInt(req.query.pageSize) || 20; // página inicial con 20 juegos
 
+    // Calcular el índice de inicio y fin para la paginación
+    const skip = (page - 1) * pageSize;
+    const limit = pageSize;
     session.run(
-        "MATCH (:USER{username: $UNAME})-[:MADE]->(o:ORDEN)-[h:HAS]->(g:GAME)  return o as ORDER,h.amount as BOUGHT,g as GAME",
-        {UNAME: req.query.username})
+        "MATCH (:USER{username: $UNAME})-[:MADE]->(o:ORDEN)-[h:HAS]->(g:GAME)  return o as ORDER,h.amount as BOUGHT,g as GAME SKIP toInteger($skip) LIMIT toInteger($limit)",
+        {UNAME: req.query.username, skip, limit})
     .then(response => {
         parsed = parser.parse(response);
         if (parsed.length == 0) {
