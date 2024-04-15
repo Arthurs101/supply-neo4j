@@ -1,7 +1,7 @@
 const supplierC = require('../controllers/supplierC')
 const { Router } = require("express")
 const router = Router();
-router.get('/all')
+router.get('/all',supplierC.getSuppliers)
 router.post('/new',supplierC.newSupplier);
 router.post('/employ',supplierC.addEmployee)
 router.get('/inventory',supplierC.getStock)

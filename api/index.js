@@ -28,12 +28,13 @@ const storesR= require('./routes/storesR');
 const tagsR= require('./routes/tagsR');
 const genreR= require('./routes/genreR');
 const platformR= require('./routes/platformR');
+const supplierR = require('./routes/supplierR');
 app.use('/user',userR);
 app.use('/game',gameR);
 app.use('/store',storesR);
 app.use('/tag',tagsR);
 app.use('/genre',genreR);
 app.use('/platform',platformR);
-
+app.use('/supplier',supplierR)
 app.listen(port)
 console.log('API escuchando en el puerto ' + port)

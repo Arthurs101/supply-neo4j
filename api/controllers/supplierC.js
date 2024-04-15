@@ -25,6 +25,25 @@ const newSupplier = (req,res) => {
         console.log(parseError);
     });
 }
+const getSuppliers = (req, res) => {
+    const page = parseInt(req.query.page) || 1; // inicio página 1 
+    const pageSize = parseInt(req.query.pageSize) || 20; // página inicial con 20 juegos
+
+    // Calcular el índice de inicio y fin para la paginación
+    const skip = (page - 1) * pageSize;
+    const limit = pageSize;
+    session.run(
+        "MATCH (t:SUPPLIER) RETURN t SKIP toInteger($skip) LIMIT toInteger($limit)" ,
+        {
+            skip,
+            limit
+        }).then(response => {
+            res.status(200).json(parser.parse(response))
+        }).catch(err => {
+            res.status(500).json(err)
+        })
+
+}
 const addEmployee = (req, res) => {
     const username = req.query.username;
     const supplier_id = sreq.query.supplierID;
@@ -109,7 +128,7 @@ const getStock = async (req, res) => {
     // Calcular el índice de inicio y fin para la paginación
     const skip = (page - 1) * pageSize;
     const limit = pageSize;
-    const supplier_id = sreq.query.supplierID
+    const supplier_id = req.query.supplierID
     stock = await session.run(
         "MATCH (t:SUPPLIER)-[s:SUPPLIES]->(g) WHERE ID(t)=$storeID return g as Game,s.stock as inStock SKIP toInteger($skip) LIMIT toInteger($limit)",{
             storeID:Number(supplier_id),
@@ -200,4 +219,4 @@ const deleteFromStock = async (req, res) => {
     }
 }
 
-module.exports =  {newSupplier,addEmployee,addToStock,getStock,deleteFromStock,updateStock}
+module.exports =  {newSupplier,addEmployee,addToStock,getStock,deleteFromStock,updateStock,getSuppliers}
