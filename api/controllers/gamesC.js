@@ -146,12 +146,23 @@ const deleteGame = async (req, res) => {
 //Get Games
 const getGames = async (req, res) => {
     try {
+        // Obtener los parámetros de paginación del query string
+        const page = parseInt(req.query.page) || 1; // inicio página 1 
+        const pageSize = parseInt(req.query.pageSize) || 20; // página inicial con 20 juegos
+
+        // Calcular el índice de inicio y fin para la paginación
+        const skip = (page - 1) * pageSize;
+        const limit = pageSize;
+
+        // Consulta Cypher para obtener los juegos de la página actual
         const result = await session.run(
-            "MATCH (g:GAME) RETURN g"
+            "MATCH (g:GAME) RETURN g SKIP toInteger($skip) LIMIT toInteger($limit)",
+            { skip, limit }
         );
 
+        // Parsear y devolver los resultados
         const parsedResult = parser.parse(result);
-        console.log("Juegos encontrados:", parsedResult);
+        console.log("Juegos encontrados en la página", page + ":", parsedResult);
         res.status(200).json(parsedResult);
 
     } catch (error) {
@@ -159,4 +170,6 @@ const getGames = async (req, res) => {
         res.status(500).json({ error: "Error al obtener los juegos: " + error.message });
     }
 };
+
+
 module.exports = { newGame, editGamefields, deleteGamefields, deleteGame, getGames };
