@@ -196,10 +196,10 @@ const getGameById = async (req, res) => {
 };
 
 
-//Add a genre to a game
+//CREAR LA RELACION GAME CON GENRE
 const addGenreToGame = async (req, res) => {
     try {
-        const { gameId, genreId } = req.body;
+        const { gameId, genreId } = req.params;
 
         // Verificar si se proporcionan tanto el ID del juego como el ID del género
         if (!gameId || !genreId) {
@@ -227,7 +227,7 @@ const addGenreToGame = async (req, res) => {
         // Crear la relación entre el juego y el género
         const result = await session.run(
             "MATCH (g:GAME), (genre:GENRE) WHERE ID(g) = $gameId AND ID(genre) = $genreId " +
-            "MERGE (g)-[:CATEGORIZED_AS]->(genre) RETURN g, genre",
+            "MERGE (g)-[r:CATEGORIZED_AS]->(genre) RETURN r",
             { gameId: parseInt(gameId), genreId: parseInt(genreId) }
         );
 
@@ -245,7 +245,7 @@ const addGenreToGame = async (req, res) => {
 //delete relationship beetwen game and genre
 const removeGenreFromGame = async (req, res) => {
     try {
-        const { gameId, genreId } = req.body;
+        const { gameId, genreId } = req.params;
 
         // Verificar si se proporcionan tanto el ID del juego como el ID del género
         if (!gameId || !genreId) {
@@ -287,7 +287,7 @@ const getGenresOfGame = async (req, res) => {
 
         // Consultar los géneros asociados al juego
         const result = await session.run(
-            "MATCH (g:GAME)-[:CATEGORIZED_AS]->(genre:GENRE) WHERE ID(g) = $gameId RETURN genre",
+            "MATCH (g:GAME)-[r:CATEGORIZED_AS]->(genre:GENRE) WHERE ID(g) = $gameId RETURN g,r,genre",
             { gameId: parseInt(gameId) }
         );
 
@@ -306,5 +306,112 @@ const getGenresOfGame = async (req, res) => {
 };
 
 
+//CREAMOS RELACION GAME CON PLATFORM
+const addPlatformToGame = async (req, res) => {
+    try{
+        const {gameId, platformId } = req.params;
 
-module.exports = { newGame, editGamefields, deleteGamefields, deleteGame, getGames, addGenreToGame, removeGenreFromGame, getGenresOfGame, getGameById};
+        if(!gameId || !platformId){
+            return res.status(400).json({error: "Falta el ID del juego o de la plataforma."});
+        }
+
+        //Verificamos si el juego y la plataforma existen en la base de datos
+        const gameExistResult = await session.run(
+            "MATCH (g:GAME) WHERE ID(g) = $gameId RETURN g",
+            {gameId: parseInt(gameId)}
+        );
+        const platformExistResult = await session.run(
+            "MATCH (p:PLATFORM) WHERE ID(p) = $platformId RETURN p",
+            {platformId: parseInt(platformId)}
+        );
+
+        if(gameExistResult.records.length === 0){
+            return res.status(404).json({error: "El juego no existe."});
+        }
+        if(platformExistResult.records.length === 0){
+            return res.status(404).json({error: "La plataforma no existe."});
+        }
+
+        //Crear la relación entre el juego y la plataforma
+        const result = await session.run(
+            "MATCH (g:GAME), (p:PLATFORM) WHERE ID(g) = $gameId AND ID(p) = $platformId " +
+            "MERGE (g)-[r:AVAILABLE_IN]->(p) RETURN r",
+            {gameId: parseInt(gameId), platformId: parseInt(platformId)}
+        );
+
+        //Parsear y devolver el resultado
+        const parsedResult = parser.parse(result);
+        res.status(200).json(parsedResult);
+    } catch (error) {
+        console.error("Error al agregar la plataforma al juego:", error.message);
+        res.status(500).json({ error: "Error al agregar la plataforma al juego: " + error.message });
+    }
+};
+
+
+//GET RELATIONSHIP BETWEEN GAME AND PLATFORM
+const getPlatformsOfGame = async (req, res) => {
+    try {
+        const { gameId } = req.params;
+
+        // Verificar si se proporciona el ID del juego
+        if (!gameId) {
+            return res.status(400).json({ error: "Falta el ID del juego." });
+        }
+
+        // Consultar las plataformas asociadas al juego
+        const result = await session.run(
+            "MATCH (g:GAME)-[r:AVAILABLE_IN]->(p:PLATFORM) WHERE ID(g) = $gameId RETURN g,r,p",
+            { gameId: parseInt(gameId) }
+        );
+
+        // Verificar si se encontraron plataformas asociadas al juego
+        if (result.records.length === 0) {
+            return res.status(404).json({ error: "No se encontraron plataformas asociadas al juego." });
+        }
+
+        // Parsear y devolver las plataformas asociadas al juego
+        const parsedResult = parser.parse(result);
+        res.status(200).json(parsedResult);
+    } catch (error) {
+        console.error("Error al obtener las plataformas asociadas al juego:", error.message);
+        res.status(500).json({ error: "Error al obtener las plataformas asociadas al juego: " + error.message });
+    }
+};
+
+//DELETE RELATIONSHIP BETWEEN GAME AND PLATFORM
+const removePlatformFromGame = async (req, res) => {
+    try{
+        const {gameId, platformId} = req.params;
+
+        //Verificar si se proporcionan tanto el ID del juego como el ID de la plataforma
+        if(!gameId || !platformId){
+            return res.status(400).json({error: "Falta el ID del juego o de la plataforma."});
+        }
+
+        //Verificar si la relación entre el juego y la plataforma existe
+        const relationExistsResult = await session.run(
+            "MATCH (g:GAME)-[rel:AVAILABLE_IN]->(p:PLATFORM) WHERE ID(g) = $gameId AND ID(p) = $platformId RETURN rel",
+            {gameId: parseInt(gameId), platformId: parseInt(platformId)}
+        );
+
+        if(relationExistsResult.records.length === 0){
+            return res.status(404).json({error: "La relación entre el juego y la plataforma no existe."});
+        }
+
+        //Eliminar la relación entre el juego y la plataforma
+        await session.run(
+            "MATCH (g:GAME)-[rel:AVAILABLE_IN]->(p:PLATFORM) WHERE ID(g) = $gameId AND ID(p) = $platformId DELETE rel",
+            {gameId: parseInt(gameId), platformId: parseInt(platformId)}
+        );
+
+        res.status(200).json({message: "Relación entre el juego y la plataforma eliminada correctamente."});
+    }
+
+    catch(error){
+        console.error("Error al eliminar la relación entre el juego y la plataforma:", error.message);
+        res.status(500).json({ error: "Error al eliminar la relación entre el juego y la plataforma: " + error.message });
+    }
+}
+
+module.exports = { newGame, editGamefields, deleteGamefields, deleteGame, getGames, addGenreToGame, removeGenreFromGame, getGenresOfGame, getGameById, addPlatformToGame, getPlatformsOfGame, removePlatformFromGame};
