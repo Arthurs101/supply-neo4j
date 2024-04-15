@@ -414,4 +414,108 @@ const removePlatformFromGame = async (req, res) => {
     }
 }
 
-module.exports = { newGame, editGamefields, deleteGamefields, deleteGame, getGames, addGenreToGame, removeGenreFromGame, getGenresOfGame, getGameById, addPlatformToGame, getPlatformsOfGame, removePlatformFromGame};
+//CREATE RELATIONSHIP BETWEEN GAME AND TAG
+const addTagformGame = async (req, res) => {
+    try{
+        const {gameId, tagId } = req.params;
+
+        if(!gameId || !tagId){
+            return res.status(400).json({error: "Falta el ID del juego o de la etiqueta."});
+        }
+
+        //Verificamos si el juego y la etiqueta existen en la base de datos
+        const gameExistResult = await session.run(
+            "MATCH (g:GAME) WHERE ID(g) = $gameId RETURN g",
+            {gameId: parseInt(gameId)}
+        );
+        const tagExistResult = await session.run(
+            "MATCH (t:TAG) WHERE ID(t) = $tagId RETURN t",
+            {tagId: parseInt(tagId)}
+        );
+
+        if(gameExistResult.records.length === 0){
+            return res.status(404).json({error: "El juego no existe."});
+        }
+        if(tagExistResult.records.length === 0){
+            return res.status(404).json({error: "La etiqueta no existe."});
+        }
+
+        //crear la relacion entre el juego y el tag
+        const result = await session.run(
+            "MATCH (g:GAME), (t:TAG) WHERE ID(g) = $gameId AND ID(t) = $tagId " +
+            "MERGE (g)-[r:TAGGED_WITH]->(t) RETURN r",
+            {gameId: parseInt(gameId), tagId: parseInt(tagId)}
+        );
+
+        //parsear y devolver el resultado
+        const parsedResult = parser.parse(result);
+        res.status(200).json(parsedResult);
+    } catch(error){
+        console.error("Error al agregar la etiqueta al juego:", error.message);
+        res.status(500).json({ error: "Error al agregar la etiqueta al juego: " + error.message });
+    }
+}
+
+//get relationship between game and tag
+const getTagformsOfGame = async (req, res) => {
+    try {
+        const { gameId } = req.params;
+
+        // Verificar si se proporciona el ID del juego
+        if (!gameId) {
+            return res.status(400).json({ error: "Falta el ID del juego." });
+        }
+
+        //consultar las etiquetas asociadas al juego
+        const result = await session.run(
+            "MATCH (g:GAME)-[r:TAGGED_WITH]->(t:TAG) WHERE ID(g) = $gameId RETURN g,r,t",
+            { gameId: parseInt(gameId) }
+        );
+
+        // Verificar si se encontraron etiquetas asociadas al juego
+        if(result.records.length === 0){
+            return res.status(404).json({ error: "No se encontraron etiquetas asociadas al juego." });
+        }
+
+        //parsear y fevolver los tags asociadas al juego
+        const parsedResult = parser.parse(result);
+        res.status(200).json(parsedResult);
+    } catch(error){
+        console.error("Error al obtener las etiquetas asociadas al juego:", error.message);
+        res.status(500).json({ error: "Error al obtener las etiquetas asociadas al juego: " + error.message });
+    }
+}
+
+//DELETE RELATIONSHIP BETWEEN GAME AND TAG
+const removeTagFromGame = async (req, res) => {
+    try{
+        const { gameId, tagId } = req.params;
+
+        // Verificar si se proporcionan tanto el ID del juego como el ID de la etiqueta
+        if (!gameId || !tagId) {
+            return res.status(400).json({ error: "Falta el ID del juego o de la etiqueta." });
+        }
+
+        //verivicar si la relacion entre el juego y la etiqueta existe
+        const relationExistsResult = await session.run(
+            "MATCH (g:GAME)-[rel:TAGGED_WITH]->(t:TAG) WHERE ID(g) = $gameId AND ID(t) = $tagId RETURN rel",
+            {gameId: parseInt(gameId), tagId: parseInt(tagId)}
+        );
+
+        if(relationExistsResult.records.length === 0){
+            return res.status(404).json({error: "La relación entre el juego y la etiqueta no existe."});
+        }
+
+        //eliminar la relacion entre el juego y tag
+        await session.run(
+            "MATCH (g:GAME)-[rel:TAGGED_WITH]->(t:TAG) WHERE ID(g) = $gameId AND ID(t) = $tagId DELETE rel",
+            {gameId: parseInt(gameId), tagId: parseInt(tagId)}
+        ); 
+        res.status(200).json({message: "Relación entre el juego y la etiqueta eliminada correctamente."});
+    } catch(error){
+        console.error("Error al eliminar la relación entre el juego y la etiqueta:", error.message);
+        res.status(500).json({ error: "Error al eliminar la relación entre el juego y la etiqueta: " + error.message });
+    }
+}
+
+module.exports = { newGame, editGamefields, deleteGamefields, deleteGame, getGames, addGenreToGame, removeGenreFromGame, getGenresOfGame, getGameById, addPlatformToGame, getPlatformsOfGame, removePlatformFromGame, addTagformGame,getTagformsOfGame, removeTagFromGame};

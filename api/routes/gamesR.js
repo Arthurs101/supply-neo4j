@@ -27,5 +27,14 @@ router.delete('/:gameId/removePlatform/:platformId', gamesC.removePlatformFromGa
 // Ruta para obtener las plataformas de un juego
 router.get('/:gameId/platforms', gamesC.getPlatformsOfGame);
 
-// Ruta para obtener la plataforma de un juego
+// ruta para agregar un tag a un juego
+router.post('/:gameId/addTag/:tagId', gamesC.addTagformGame);
+
+//Ruta para obtener los tags de un juego
+router.get('/:gameId/tags', gamesC.getTagformsOfGame);
+
+// Ruta para eliminar los tags de un juego
+router.delete('/:gameId/removeTag/:tagId', gamesC.removeTagFromGame);
+
+
 module.exports = router;
