@@ -10,4 +10,5 @@ router.post('/inventory',storesC.addToStock)
 router.delete('/inventory',storesC.deleteFromStock)
 router.get('/search/:storeName',storesC.getStoreSearch)
 router.post('/askSupplies',storesC.askSupplies)
+router.get('/getSupplies',storesC.historialSupplies)
 module.exports = router

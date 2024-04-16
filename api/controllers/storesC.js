@@ -314,4 +314,12 @@ const askSupplies = async(req, res) => {
     });
 }
 
-module.exports =  {newStore,addEmployee,addToStock,getStock,deleteFromStock,getStores,getStoreSearch,askSupplies}
+const historialSupplies = async (req, res) => {
+    historial = await session.run(
+        "MATCH (g:GAME)<-[o:HAS]-(d:DISPATCH)-[:DELIVERED_IN]->(T:TIENDA) WHERE ID(T) = $storeID RETURN g,o,d",
+        {storeID: Number(req.query.storeId)}
+    );
+    historial = parser.parse(historial);
+    res.json(historial);
+}
+module.exports =  {newStore,addEmployee,addToStock,getStock,deleteFromStock,getStores,getStoreSearch,askSupplies,historialSupplies}
