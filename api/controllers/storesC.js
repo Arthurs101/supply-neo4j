@@ -291,7 +291,7 @@ const askSupplies = async(req, res) => {
                                     gameID: Number(gameID),
                                     boughtAmount: Number(gameboughtAmount)
                                 }                   
-                                ).then(result => {console.log(result)})
+                                )
             }else {
                 transaction.run("MATCH (t:TIENDA)-[s:SALES]->(g:GAME) WHERE ID(t) = $storeID AND ID(g) = $gameID " + 
                                 "SET s.stock = s.stock + $boughtAmount",{
