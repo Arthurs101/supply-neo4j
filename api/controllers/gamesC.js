@@ -170,6 +170,355 @@ const getGames = async (req, res) => {
         res.status(500).json({ error: "Error al obtener los juegos: " + error.message });
     }
 };
+
+//get game by id
+const getGameById = async (req, res) => {
+    try {
+        const { gameId } = req.params;
+
+        if (!gameId) {
+            return res.status(400).json({ error: "Falta el ID del juego." });
+        }
+
+        const result = await session.run(
+            "MATCH (g:GAME) WHERE ID(g) = $gameId RETURN g",
+            { gameId: parseInt(gameId) }
+        );
+
+        // Parsear y enviar el resultado al cliente
+        const parsedResult = parser.parse(result);
+        res.status(200).json(parsedResult);
+
+    } catch (error) {
+        console.error("Error al obtener el juego por ID:", error.message);
+        res.status(500).json({ error: "Error al obtener el juego por ID: " + error.message });
+    }
+};
+
+
+//CREAR LA RELACION GAME CON GENRE
+const addGenreToGame = async (req, res) => {
+    try {
+        const { gameId, genreId } = req.params;
+
+        // Verificar si se proporcionan tanto el ID del juego como el ID del género
+        if (!gameId || !genreId) {
+            return res.status(400).json({ error: "Falta el ID del juego o del género." });
+        }
+
+        // Verificar si el juego y el género existen en la base de datos
+        const gameExistsResult = await session.run(
+            "MATCH (g:GAME) WHERE ID(g) = $gameId RETURN g",
+            { gameId: parseInt(gameId) }
+        );
+        const genreExistsResult = await session.run(
+            "MATCH (g:GENRE) WHERE ID(g) = $genreId RETURN g",
+            { genreId: parseInt(genreId) }
+        );
+
+        if (gameExistsResult.records.length === 0) {
+            return res.status(404).json({ error: "El juego no existe." });
+        }
+
+        if (genreExistsResult.records.length === 0) {
+            return res.status(404).json({ error: "El género no existe." });
+        }
+
+        // Crear la relación entre el juego y el género
+        const result = await session.run(
+            "MATCH (g:GAME), (genre:GENRE) WHERE ID(g) = $gameId AND ID(genre) = $genreId " +
+            "MERGE (g)-[r:CATEGORIZED_AS]->(genre) RETURN r",
+            { gameId: parseInt(gameId), genreId: parseInt(genreId) }
+        );
+
+        // Parsear y devolver el resultado
+        const parsedResult = parser.parse(result);
+        res.status(200).json(parsedResult);
+    } catch (error) {
+        console.error("Error al agregar el género al juego:", error.message);
+        res.status(500).json({ error: "Error al agregar el género al juego: " + error.message });
+    }
+};
+
+
+
+//delete relationship beetwen game and genre
+const removeGenreFromGame = async (req, res) => {
+    try {
+        const { gameId, genreId } = req.params;
+
+        // Verificar si se proporcionan tanto el ID del juego como el ID del género
+        if (!gameId || !genreId) {
+            return res.status(400).json({ error: "Falta el ID del juego o del género." });
+        }
+
+        // Verificar si la relación entre el juego y el género existe
+        const relationExistsResult = await session.run(
+            "MATCH (g:GAME)-[rel:CATEGORIZED_AS]->(genre:GENRE) WHERE ID(g) = $gameId AND ID(genre) = $genreId RETURN rel",
+            { gameId: parseInt(gameId), genreId: parseInt(genreId) }
+        );
+
+        if (relationExistsResult.records.length === 0) {
+            return res.status(404).json({ error: "La relación entre el juego y el género no existe." });
+        }
+
+        // Eliminar la relación entre el juego y el género
+        await session.run(
+            "MATCH (g:GAME)-[rel:CATEGORIZED_AS]->(genre:GENRE) WHERE ID(g) = $gameId AND ID(genre) = $genreId DELETE rel",
+            { gameId: parseInt(gameId), genreId: parseInt(genreId) }
+        );
+
+        res.status(200).json({ message: "Relación entre el juego y el género eliminada correctamente." });
+    } catch (error) {
+        console.error("Error al eliminar la relación entre el juego y el género:", error.message);
+        res.status(500).json({ error: "Error al eliminar la relación entre el juego y el género: " + error.message });
+    }
+};
+
+//get relationship between game and genre
+const getGenresOfGame = async (req, res) => {
+    try {
+        const { gameId } = req.params;
+
+        // Verificar si se proporciona el ID del juego
+        if (!gameId) {
+            return res.status(400).json({ error: "Falta el ID del juego." });
+        }
+
+        // Consultar los géneros asociados al juego
+        const result = await session.run(
+            "MATCH (g:GAME)-[r:CATEGORIZED_AS]->(genre:GENRE) WHERE ID(g) = $gameId RETURN g,r,genre",
+            { gameId: parseInt(gameId) }
+        );
+
+        // Verificar si se encontraron géneros asociados al juego
+        if (result.records.length === 0) {
+            return res.status(404).json({ error: "No se encontraron géneros asociados al juego." });
+        }
+
+        // Parsear y devolver los géneros asociados al juego
+        const parsedResult = parser.parse(result);
+        res.status(200).json(parsedResult);
+    } catch (error) {
+        console.error("Error al obtener los géneros asociados al juego:", error.message);
+        res.status(500).json({ error: "Error al obtener los géneros asociados al juego: " + error.message });
+    }
+};
+
+
+//CREAMOS RELACION GAME CON PLATFORM
+const addPlatformToGame = async (req, res) => {
+    try{
+        const {gameId, platformId } = req.params;
+
+        if(!gameId || !platformId){
+            return res.status(400).json({error: "Falta el ID del juego o de la plataforma."});
+        }
+
+        //Verificamos si el juego y la plataforma existen en la base de datos
+        const gameExistResult = await session.run(
+            "MATCH (g:GAME) WHERE ID(g) = $gameId RETURN g",
+            {gameId: parseInt(gameId)}
+        );
+        const platformExistResult = await session.run(
+            "MATCH (p:PLATFORM) WHERE ID(p) = $platformId RETURN p",
+            {platformId: parseInt(platformId)}
+        );
+
+        if(gameExistResult.records.length === 0){
+            return res.status(404).json({error: "El juego no existe."});
+        }
+        if(platformExistResult.records.length === 0){
+            return res.status(404).json({error: "La plataforma no existe."});
+        }
+
+        //Crear la relación entre el juego y la plataforma
+        const result = await session.run(
+            "MATCH (g:GAME), (p:PLATFORM) WHERE ID(g) = $gameId AND ID(p) = $platformId " +
+            "MERGE (g)-[r:AVAILABLE_IN]->(p) RETURN r",
+            {gameId: parseInt(gameId), platformId: parseInt(platformId)}
+        );
+
+        //Parsear y devolver el resultado
+        const parsedResult = parser.parse(result);
+        res.status(200).json(parsedResult);
+    } catch (error) {
+        console.error("Error al agregar la plataforma al juego:", error.message);
+        res.status(500).json({ error: "Error al agregar la plataforma al juego: " + error.message });
+    }
+};
+
+
+//GET RELATIONSHIP BETWEEN GAME AND PLATFORM
+const getPlatformsOfGame = async (req, res) => {
+    try {
+        const { gameId } = req.params;
+
+        // Verificar si se proporciona el ID del juego
+        if (!gameId) {
+            return res.status(400).json({ error: "Falta el ID del juego." });
+        }
+
+        // Consultar las plataformas asociadas al juego
+        const result = await session.run(
+            "MATCH (g:GAME)-[r:AVAILABLE_IN]->(p:PLATFORM) WHERE ID(g) = $gameId RETURN g,r,p",
+            { gameId: parseInt(gameId) }
+        );
+
+        // Verificar si se encontraron plataformas asociadas al juego
+        if (result.records.length === 0) {
+            return res.status(404).json({ error: "No se encontraron plataformas asociadas al juego." });
+        }
+
+        // Parsear y devolver las plataformas asociadas al juego
+        const parsedResult = parser.parse(result);
+        res.status(200).json(parsedResult);
+    } catch (error) {
+        console.error("Error al obtener las plataformas asociadas al juego:", error.message);
+        res.status(500).json({ error: "Error al obtener las plataformas asociadas al juego: " + error.message });
+    }
+};
+
+//DELETE RELATIONSHIP BETWEEN GAME AND PLATFORM
+const removePlatformFromGame = async (req, res) => {
+    try{
+        const {gameId, platformId} = req.params;
+
+        //Verificar si se proporcionan tanto el ID del juego como el ID de la plataforma
+        if(!gameId || !platformId){
+            return res.status(400).json({error: "Falta el ID del juego o de la plataforma."});
+        }
+
+        //Verificar si la relación entre el juego y la plataforma existe
+        const relationExistsResult = await session.run(
+            "MATCH (g:GAME)-[rel:AVAILABLE_IN]->(p:PLATFORM) WHERE ID(g) = $gameId AND ID(p) = $platformId RETURN rel",
+            {gameId: parseInt(gameId), platformId: parseInt(platformId)}
+        );
+
+        if(relationExistsResult.records.length === 0){
+            return res.status(404).json({error: "La relación entre el juego y la plataforma no existe."});
+        }
+
+        //Eliminar la relación entre el juego y la plataforma
+        await session.run(
+            "MATCH (g:GAME)-[rel:AVAILABLE_IN]->(p:PLATFORM) WHERE ID(g) = $gameId AND ID(p) = $platformId DELETE rel",
+            {gameId: parseInt(gameId), platformId: parseInt(platformId)}
+        );
+
+        res.status(200).json({message: "Relación entre el juego y la plataforma eliminada correctamente."});
+    }
+
+    catch(error){
+        console.error("Error al eliminar la relación entre el juego y la plataforma:", error.message);
+        res.status(500).json({ error: "Error al eliminar la relación entre el juego y la plataforma: " + error.message });
+    }
+}
+
+//CREATE RELATIONSHIP BETWEEN GAME AND TAG
+const addTagformGame = async (req, res) => {
+    try{
+        const {gameId, tagId } = req.params;
+
+        if(!gameId || !tagId){
+            return res.status(400).json({error: "Falta el ID del juego o de la etiqueta."});
+        }
+
+        //Verificamos si el juego y la etiqueta existen en la base de datos
+        const gameExistResult = await session.run(
+            "MATCH (g:GAME) WHERE ID(g) = $gameId RETURN g",
+            {gameId: parseInt(gameId)}
+        );
+        const tagExistResult = await session.run(
+            "MATCH (t:TAG) WHERE ID(t) = $tagId RETURN t",
+            {tagId: parseInt(tagId)}
+        );
+
+        if(gameExistResult.records.length === 0){
+            return res.status(404).json({error: "El juego no existe."});
+        }
+        if(tagExistResult.records.length === 0){
+            return res.status(404).json({error: "La etiqueta no existe."});
+        }
+
+        //crear la relacion entre el juego y el tag
+        const result = await session.run(
+            "MATCH (g:GAME), (t:TAG) WHERE ID(g) = $gameId AND ID(t) = $tagId " +
+            "MERGE (g)-[r:TAGGED_WITH]->(t) RETURN r",
+            {gameId: parseInt(gameId), tagId: parseInt(tagId)}
+        );
+
+        //parsear y devolver el resultado
+        const parsedResult = parser.parse(result);
+        res.status(200).json(parsedResult);
+    } catch(error){
+        console.error("Error al agregar la etiqueta al juego:", error.message);
+        res.status(500).json({ error: "Error al agregar la etiqueta al juego: " + error.message });
+    }
+}
+
+//get relationship between game and tag
+const getTagformsOfGame = async (req, res) => {
+    try {
+        const { gameId } = req.params;
+
+        // Verificar si se proporciona el ID del juego
+        if (!gameId) {
+            return res.status(400).json({ error: "Falta el ID del juego." });
+        }
+
+        //consultar las etiquetas asociadas al juego
+        const result = await session.run(
+            "MATCH (g:GAME)-[r:TAGGED_WITH]->(t:TAG) WHERE ID(g) = $gameId RETURN g,r,t",
+            { gameId: parseInt(gameId) }
+        );
+
+        // Verificar si se encontraron etiquetas asociadas al juego
+        if(result.records.length === 0){
+            return res.status(404).json({ error: "No se encontraron etiquetas asociadas al juego." });
+        }
+
+        //parsear y fevolver los tags asociadas al juego
+        const parsedResult = parser.parse(result);
+        res.status(200).json(parsedResult);
+    } catch(error){
+        console.error("Error al obtener las etiquetas asociadas al juego:", error.message);
+        res.status(500).json({ error: "Error al obtener las etiquetas asociadas al juego: " + error.message });
+    }
+}
+
+//DELETE RELATIONSHIP BETWEEN GAME AND TAG
+const removeTagFromGame = async (req, res) => {
+    try{
+        const { gameId, tagId } = req.params;
+
+        // Verificar si se proporcionan tanto el ID del juego como el ID de la etiqueta
+        if (!gameId || !tagId) {
+            return res.status(400).json({ error: "Falta el ID del juego o de la etiqueta." });
+        }
+
+        //verivicar si la relacion entre el juego y la etiqueta existe
+        const relationExistsResult = await session.run(
+            "MATCH (g:GAME)-[rel:TAGGED_WITH]->(t:TAG) WHERE ID(g) = $gameId AND ID(t) = $tagId RETURN rel",
+            {gameId: parseInt(gameId), tagId: parseInt(tagId)}
+        );
+
+        if(relationExistsResult.records.length === 0){
+            return res.status(404).json({error: "La relación entre el juego y la etiqueta no existe."});
+        }
+
+        //eliminar la relacion entre el juego y tag
+        await session.run(
+            "MATCH (g:GAME)-[rel:TAGGED_WITH]->(t:TAG) WHERE ID(g) = $gameId AND ID(t) = $tagId DELETE rel",
+            {gameId: parseInt(gameId), tagId: parseInt(tagId)}
+        ); 
+        res.status(200).json({message: "Relación entre el juego y la etiqueta eliminada correctamente."});
+    } catch(error){
+        console.error("Error al eliminar la relación entre el juego y la etiqueta:", error.message);
+        res.status(500).json({ error: "Error al eliminar la relación entre el juego y la etiqueta: " + error.message });
+    }
+}
+
+
 //Get the stores where the game can be bought
 const getGamseStores = async(req,res) => {
     const { gameId } = req.params;
@@ -256,4 +605,5 @@ const getGameSearch = async (req, res) => {
     }
 }
 
-module.exports = { newGame, editGamefields, deleteGamefields, deleteGame, getGames , getGamseStores , getGamseSuppliers , getGameSearch};
+module.exports = { newGame, editGamefields, deleteGamefields, deleteGame, getGames, getGamseStores , getGamseSuppliers , getGameSearch, addGenreToGame, removeGenreFromGame, getGenresOfGame, getGameById, addPlatformToGame, getPlatformsOfGame, removePlatformFromGame, addTagformGame,getTagformsOfGame, removeTagFromGame};
+
