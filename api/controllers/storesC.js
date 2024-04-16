@@ -257,7 +257,7 @@ const askSupplies = async(req, res) => {
     ).catch((error) => {
         res.status(500).json(error);
     })
-    order.then(parser.parse).then((parsed) => {
+    order.then(parser.parse).then(async (parsed) => {
         // Proceed to create relationships between order node and games
         for (const game of games) {
             const gameID = game.gameID;
@@ -266,15 +266,42 @@ const askSupplies = async(req, res) => {
                 "MATCH (o:DISPATCH) WHERE ID(o) = $orderID " +
                 "MATCH (g:GAME) WHERE ID(g) = $gameID " +
                 "CREATE (o)-[:HAS {amount: $boughtAmount}]->(g) " +
-                "WITH g "+
-                "MATCH (s:TIENDA)-[r:SUPPLIES]->(g) " +
+                "WITH g ,$boughtAmount as vals " + 
+                "MATCH (s:SUPPLIER)-[r:SUPPLIES]->(game) " +
                 "SET r.has_available = r.has_available - $boughtAmount",
                 {
                     orderID: Number(parsed[0]['id']), 
                     gameID: Number(gameID),
-                    boughtAmount: Number(gameboughtAmount)
+                    boughtAmount: Number(gameboughtAmount),
+                    
                 }
-            );
+            ).catch(error => {console.error(error)});
+            results = await transaction.run(
+                "MATCH (t:TIENDA)-[v:SALES]->(g:GAME) WHERE ID(t) = $storeID AND ID(g) =$gameID "+
+                "RETURN v",{
+                    storeID: Number(storeID),
+                    gameID: Number(gameID)
+                }
+            )
+            if (results.records.length == 0) {
+                transaction.run("MATCH (t:TIENDA) WHERE ID(t) = $storeID " + 
+                                "MATCH (g:GAME) WHERE ID(g) = $gameID " +
+                                "CREATE (t)-[:SALES {stock: $boughtAmount}]->(g)",{
+                                    storeID: Number(storeID),
+                                    gameID: Number(gameID),
+                                    boughtAmount: Number(gameboughtAmount)
+                                }                   
+                                ).then(result => {console.log(result)})
+            }else {
+                transaction.run("MATCH (t:TIENDA)-[s:SALES]->(g:GAME) WHERE ID(t) = $storeID AND ID(g) = $gameID " + 
+                                "SET s.stock = s.stock + $boughtAmount",{
+                                    gameID: Number(gameID),
+                                    storeID: Number(storeID),
+                                    boughtAmount: Number(gameboughtAmount)
+                                }                   
+                                )
+            }
+            
         }
     }).then(() => {
         // If all operations were successful, commit the transaction
