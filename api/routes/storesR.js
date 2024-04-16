@@ -8,4 +8,5 @@ router.post('/employ',storesC.addEmployee)
 router.get('/inventory',storesC.getStock)
 router.post('/inventory',storesC.addToStock)
 router.delete('/inventory',storesC.deleteFromStock)
+router.get('/search/:storeName',storesC.getStoreSearch)
 module.exports = router
