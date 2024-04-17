@@ -130,7 +130,7 @@ const getStock = async (req, res) => {
     const limit = pageSize;
     const supplier_id = req.query.supplierID
     stock = await session.run(
-        "MATCH (t:SUPPLIER)-[s:SUPPLIES]->(g) WHERE ID(t)=$storeID return g as Game,s.stock as inStock SKIP toInteger($skip) LIMIT toInteger($limit)",{
+        "MATCH (t:SUPPLIER)-[s:SUPPLIES]->(g) WHERE ID(t)=$storeID return g as Game,s.has_available as inStock SKIP toInteger($skip) LIMIT toInteger($limit)",{
             storeID:Number(supplier_id),
             skip,
             limit

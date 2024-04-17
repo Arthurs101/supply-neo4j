@@ -123,7 +123,7 @@ const deleteGame = async (req, res) => {
         }
 
         const result = await session.run(
-            "MATCH (g:GAME) WHERE ID(g) = $gameId DELETE g",
+            "MATCH (g:GAME) WHERE ID(g) = $gameId DETACH DELETE g",
             { gameId: parseInt(gameId) }
         );
 
