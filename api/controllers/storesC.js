@@ -315,11 +315,50 @@ const askSupplies = async(req, res) => {
 }
 
 const historialSupplies = async (req, res) => {
-    historial = await session.run(
-        "MATCH (g:GAME)<-[o:HAS]-(d:DISPATCH)-[:DELIVERED_IN]->(T:TIENDA) WHERE ID(T) = $storeID RETURN g,o,d",
-        {storeID: Number(req.query.storeId)}
-    );
-    historial = parser.parse(historial);
-    res.json(historial);
+    try {
+        const storeID = Number(req.query.storeId);
+
+        // Ejecutar la consulta Cypher para obtener el historial de suministros
+        const result = await session.run(
+            "MATCH (g:GAME)<-[o:HAS]-(d:DISPATCH)-[:DELIVERED_IN]->(t:TIENDA), (s:SUPPLIER)-[:MAKES]->(d) WHERE ID(t) = $storeID RETURN g,o,d,s",
+            { storeID: storeID }
+        );
+
+        // Parsear los resultados
+        const historial = parser.parse(result);
+
+        // Reformatear la estructura de la respuesta
+        const reformattedHistorial = historial.map(entry => ({
+            detalles: {
+                id: entry.d.id,
+                fecha: entry.d.fecha
+            },
+            items: [{
+                id: entry.g.id,
+                precio: entry.g.precio,
+                rating: entry.g.rating,
+                amount: entry.o.amount,
+                titulo: entry.g.titulo,
+                portada: entry.g.portada,
+                slug: entry.g.slug,
+                publicacion: entry.g.publicacion,
+                screenshots: entry.g.screenshots
+            }],
+            proveedor: {
+                id: entry.s.id,
+                nombre: entry.s.nombre
+            }
+        }));
+
+        // Enviar la respuesta JSON al cliente
+        res.json(reformattedHistorial);
+    } catch (error) {
+        console.error("Error al obtener el historial de suministros:", error.message);
+        res.status(500).json({ error: "Error al obtener el historial de suministros: " + error.message });
+    }
 }
+
+
+
+
 module.exports =  {newStore,addEmployee,addToStock,getStock,deleteFromStock,getStores,getStoreSearch,askSupplies,historialSupplies}
